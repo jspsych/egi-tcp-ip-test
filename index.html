@@ -13,13 +13,17 @@
     var welcome = {
         type: 'html-keyboard-response',
         stimulus: '<p>Welcome. When you are ready to begin, press C to continue.</p>',
-        choices: ['C']
+        choices: ['C'],
+        on_start: function(){
+            jsPsych.hardware.netstation.connect();
+        },
+        on_finish: async function(){
+            await jsPsych.hardware.netstation.beginSession();
+            await jsPsych.hardware.netstation.sync();
+            await jsPsych.hardware.netstation.beginRecording();
+        }
     }
     timeline.push(welcome);
-
-    // time sync with amplifier ?
-
-    // start recording ?
 
     var trials = [
         {stimulus: '<p style="font-size:28px;">< < < < <</p>', correct_response: 'F', code: 'CONL'},
@@ -28,6 +32,7 @@
         {stimulus: '<p style="font-size:28px;">< < > < <</p>', correct_response: 'J', code: 'INCR'}
     ]
 
+    var last_onset = null;
     var test_procedure = {
         timeline: [
             {
@@ -43,8 +48,18 @@
                     code: jsPsych.timelineVariable('code'),
                     correct_response: jsPsych.timelineVariable('correct_response')
                 },
+                on_load: function(){
+                    last_onset = performance.now();
+                },
                 on_finish: function(data){
                     data.correct = data.key_press == jsPsych.pluginAPI.convertKeyCharacterToKeyCode(data.correct_response);
+                    jsPsych.hardware.netstation.sendEvent({
+                        key: data.code,
+                        timestamp: last_onset,
+                        table: {
+                            correct: data.correct
+                        }
+                    });
                 }
             }
         ],
